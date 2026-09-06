@@ -1,0 +1,5020 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Zombie Defense V2</title>
+
+<style>
+*{
+    box-sizing:border-box;
+}
+
+html,body{
+    margin:0;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:#08111d;
+    font-family:Arial,sans-serif;
+    color:white;
+    user-select:none;
+}
+
+canvas{
+    display:block;
+    width:100vw;
+    height:100vh;
+    cursor:crosshair;
+}
+
+#ui{
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+}
+
+.panel{
+    background:rgba(8,17,29,.93);
+    border:1px solid rgba(255,255,255,.13);
+    box-shadow:0 8px 30px rgba(0,0,0,.4);
+    border-radius:12px;
+}
+
+#top{
+    position:absolute;
+    left:14px;
+    top:14px;
+    padding:12px 15px;
+    min-width:270px;
+}
+
+.stat{
+    margin:4px 0;
+    font-size:14px;
+}
+
+.stat b{
+    font-size:18px;
+}
+
+#phase{
+    position:absolute;
+    left:50%;
+    top:14px;
+    transform:translateX(-50%);
+    padding:10px 25px;
+    text-align:center;
+    font-weight:bold;
+    font-size:18px;
+}
+
+#timer{
+    margin-top:3px;
+    color:#cbd5e1;
+    font-size:14px;
+}
+
+#version{
+    position:absolute;
+    right:14px;
+    top:14px;
+    padding:8px 12px;
+    font-weight:bold;
+}
+
+#floors{
+    position:absolute;
+    right:14px;
+    top:58px;
+    display:flex;
+    gap:5px;
+    padding:6px;
+    pointer-events:auto;
+}
+
+.floorBtn{
+    padding:8px 11px;
+    background:#1e293b;
+    border:1px solid #334155;
+    border-radius:7px;
+    color:white;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+.floorBtn.active{
+    background:#2563eb;
+    border-color:#60a5fa;
+}
+
+#shop{
+    position:absolute;
+    left:14px;
+    bottom:14px;
+    width:270px;
+    max-height:44vh;
+    padding:10px;
+    overflow:auto;
+    pointer-events:auto;
+}
+
+#shop h3{
+    margin:3px 0 8px;
+    font-size:16px;
+}
+
+.item{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    padding:8px;
+    margin:5px 0;
+    border-radius:9px;
+    background:rgba(255,255,255,.06);
+    border:1px solid transparent;
+    cursor:pointer;
+}
+
+.item:hover{
+    background:rgba(255,255,255,.11);
+}
+
+.item.selected{
+    border-color:#60a5fa;
+    background:rgba(37,99,235,.28);
+}
+
+.item .left{
+    display:flex;
+    align-items:center;
+    gap:8px;
+}
+
+.icon{
+    font-size:22px;
+}
+
+.small{
+    color:#9fb0c4;
+    font-size:11px;
+}
+
+.cost{
+    color:#facc15;
+    font-weight:bold;
+}
+
+#controls{
+    position:absolute;
+    right:14px;
+    bottom:14px;
+    padding:10px 12px;
+    text-align:right;
+    font-size:12px;
+    line-height:1.55;
+}
+
+#hint{
+    position:absolute;
+    left:50%;
+    bottom:18px;
+    transform:translateX(-50%);
+    padding:8px 14px;
+    border-radius:9px;
+    background:rgba(0,0,0,.45);
+    color:#cbd5e1;
+    font-size:13px;
+}
+
+#toast{
+    position:absolute;
+    left:50%;
+    top:95px;
+    transform:translateX(-50%);
+    padding:9px 15px;
+    background:rgba(15,23,42,.96);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:9px;
+    opacity:0;
+    transition:opacity .15s;
+}
+
+#start,
+#gameover{
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+    width:min(500px,90vw);
+    padding:30px;
+    text-align:center;
+    pointer-events:auto;
+}
+
+#start h1,
+#gameover h1{
+    margin:0 0 10px;
+    font-size:34px;
+}
+
+#start p,
+#gameover p{
+    color:#cbd5e1;
+    line-height:1.5;
+}
+
+button{
+    border:0;
+    border-radius:9px;
+    padding:11px 20px;
+    background:#2563eb;
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#3b82f6;
+}
+
+#start button,
+#gameover button{
+    margin-top:12px;
+    font-size:18px;
+}
+
+::-webkit-scrollbar{
+    width:8px;
+}
+
+::-webkit-scrollbar-thumb{
+    background:#475569;
+    border-radius:8px;
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="game"></canvas>
+
+<div id="ui">
+
+    <div id="top" class="panel">
+        <div class="stat">
+            💰 Budget:
+            <b id="money">$1,000</b>
+        </div>
+
+        <div class="stat">
+            ⚡ Power:
+            <b id="power">0 / 0</b>
+        </div>
+
+        <div class="stat">
+            🧍 Survivor:
+            <b id="survivor">NOT PLACED</b>
+        </div>
+
+        <div class="stat">
+            🏠 Base:
+            <b id="base">100%</b>
+        </div>
+
+        <div class="stat">
+            🧟 Zombies:
+            <b id="zombies">0</b>
+        </div>
+    </div>
+
+    <div id="phase" class="panel">
+        <div id="phaseText">
+            BUILD PHASE • WAVE 1
+        </div>
+
+        <div id="timer">
+            05:00
+        </div>
+    </div>
+
+    <div id="version" class="panel">
+        V2
+    </div>
+
+    <div id="floors" class="panel">
+
+        <button class="floorBtn active" data-floor="0">
+            DOWNSTAIRS
+        </button>
+
+        <button class="floorBtn" data-floor="1">
+            GROUND
+        </button>
+
+        <button class="floorBtn" data-floor="2">
+            ROOF
+        </button>
+
+    </div>
+
+    <div id="shop" class="panel">
+
+        <h3>
+            BUILD
+        </h3>
+
+        <div id="items"></div>
+
+    </div>
+
+    <div id="controls" class="panel">
+
+        Left click: Place / select<br>
+        Right click: Remove player object<br>
+        R: Rotate<br>
+        Space: Start wave early<br>
+        Mouse wheel: Zoom<br>
+        Middle mouse: Pan<br>
+        Demolish: $25 per premade object
+
+    </div>
+
+    <div id="hint">
+        Place your survivor before the first wave.
+    </div>
+
+    <div id="toast"></div>
+
+    <div id="start" class="panel">
+
+        <h1>
+            🧟 ZOMBIE DEFENSE
+        </h1>
+
+        <p>
+            Build your base across three floors,
+            manage electricity, place your survivor,
+            and survive 10 waves.
+        </p>
+
+        <button id="startBtn">
+            START RUN
+        </button>
+
+    </div>
+
+    <div id="gameover" class="panel">
+
+        <h1 id="endTitle">
+            BASE DESTROYED
+        </h1>
+
+        <p id="endText"></p>
+
+        <button id="restartBtn">
+            PLAY AGAIN
+        </button>
+
+    </div>
+
+</div>
+
+<script>
+
+const canvas =
+    document.getElementById("game");
+
+const ctx =
+    canvas.getContext("2d");
+
+
+/* =========================================================
+   SCREEN
+========================================================= */
+
+let W = innerWidth;
+let H = innerHeight;
+
+
+function resize(){
+
+    W = canvas.width = innerWidth;
+    H = canvas.height = innerHeight;
+
+}
+
+addEventListener("resize",resize);
+resize();
+
+
+/* =========================================================
+   WORLD
+========================================================= */
+
+const TILE = 42;
+
+const COLS = 46;
+
+const ROWS = 32;
+
+const world = {
+
+    w: COLS * TILE,
+
+    h: ROWS * TILE
+
+};
+
+
+/* =========================================================
+   FLOORS
+========================================================= */
+
+const FLOOR_NAMES = [
+    "DOWNSTAIRS",
+    "GROUND FLOOR",
+    "ROOF"
+];
+
+let currentFloor = 1;
+
+
+/*
+    Every floor has its own buildings.
+*/
+
+let buildings = {
+
+    0: [],
+
+    1: [],
+
+    2: []
+
+};
+
+
+/*
+    Premade objects on each floor.
+*/
+
+let premade = {
+
+    0: [],
+
+    1: [],
+
+    2: []
+
+};
+
+
+/* =========================================================
+   CAMERA
+========================================================= */
+
+const camera = {
+
+    x: 0,
+
+    y: 0,
+
+    zoom: 1
+
+};
+
+let dragging = false;
+
+let dragStart = {
+    x:0,
+    y:0
+};
+
+let camStart = {
+    x:0,
+    y:0
+};
+
+
+/* =========================================================
+   MOUSE
+========================================================= */
+
+const mouse = {
+
+    sx:0,
+
+    sy:0
+
+};
+
+
+/* =========================================================
+   GAME STATE
+========================================================= */
+
+let running = false;
+
+let phase = "build";
+
+let wave = 1;
+
+let buildTime = 300;
+
+let waveTime = 0;
+
+let waveDuration = 48;
+
+let lastTime = 0;
+
+let money = 1000;
+
+let baseHP = 100;
+
+
+/* =========================================================
+   PLAYER
+========================================================= */
+
+let selected = "wall";
+
+let rotation = 0;
+
+let survivor = {
+
+    placed:false,
+
+    floor:1,
+
+    x:23,
+
+    y:16,
+
+    hp:100,
+
+    maxHp:100
+
+};
+
+
+/* =========================================================
+   ZOMBIES
+========================================================= */
+
+let zombies = [];
+
+let shots = [];
+
+let particles = [];
+
+let spawnTimer = 0;
+
+
+/* =========================================================
+   BUILD ITEMS
+========================================================= */
+
+const items = {
+
+    wall:{
+
+        name:"Wall",
+
+        icon:"🧱",
+
+        cost:50,
+
+        color:"#64748b",
+
+        w:1,
+
+        h:1,
+
+        hp:300,
+
+        power:0,
+
+        type:"wall"
+
+    },
+
+
+    turret:{
+
+        name:"Turret",
+
+        icon:"🔫",
+
+        cost:180,
+
+        color:"#3b82f6",
+
+        w:1,
+
+        h:1,
+
+        hp:180,
+
+        power:1,
+
+        range:5.5,
+
+        damage:22,
+
+        rate:.65,
+
+        type:"turret"
+
+    },
+
+
+    mine:{
+
+        name:"Mine",
+
+        icon:"💥",
+
+        cost:80,
+
+        color:"#f59e0b",
+
+        w:1,
+
+        h:1,
+
+        hp:60,
+
+        power:0,
+
+        type:"mine"
+
+    },
+
+
+    generator:{
+
+        name:"Generator",
+
+        icon:"⚡",
+
+        cost:250,
+
+        color:"#22c55e",
+
+        w:2,
+
+        h:2,
+
+        hp:260,
+
+        power:3,
+
+        type:"generator"
+
+    },
+
+
+    heavy:{
+
+        name:"Heavy Turret",
+
+        icon:"🎯",
+
+        cost:350,
+
+        color:"#a855f7",
+
+        w:2,
+
+        h:2,
+
+        hp:260,
+
+        power:2,
+
+        range:7,
+
+        damage:55,
+
+        rate:1.25,
+
+        type:"heavy"
+
+    },
+
+
+    survivor:{
+
+        name:"Survivor",
+
+        icon:"🧍",
+
+        cost:0,
+
+        color:"#f8fafc",
+
+        w:1,
+
+        h:1,
+
+        hp:100,
+
+        power:0,
+
+        type:"survivor"
+
+    },
+
+
+    demolish:{
+
+        name:"Demolish Tool",
+
+        icon:"❌",
+
+        cost:25,
+
+        color:"#ef4444",
+
+        w:1,
+
+        h:1,
+
+        hp:1,
+
+        power:0,
+
+        type:"demolish"
+
+    }
+
+};
+
+
+/* =========================================================
+   MONEY
+========================================================= */
+
+function moneyFmt(value){
+
+    return "$" +
+        Math.floor(value)
+        .toLocaleString();
+
+}
+
+
+/* =========================================================
+   TOAST
+========================================================= */
+
+function toast(text){
+
+    const element =
+        document.getElementById("toast");
+
+    element.textContent = text;
+
+    element.style.opacity = 1;
+
+    clearTimeout(window.toastTimer);
+
+    window.toastTimer =
+        setTimeout(() => {
+
+            element.style.opacity = 0;
+
+        },1300);
+
+}
+
+
+/* =========================================================
+   SHOP
+========================================================= */
+
+function makeShop(){
+
+    const root =
+        document.getElementById("items");
+
+    root.innerHTML = "";
+
+
+    for(
+        const [id,data]
+        of Object.entries(items)
+    ){
+
+        const element =
+            document.createElement("div");
+
+        element.className =
+            "item" +
+            (
+                selected === id
+                    ? " selected"
+                    : ""
+            );
+
+
+        let description = "";
+
+
+        if(id === "generator"){
+
+            description =
+                "3 power";
+
+        }
+
+        else if(id === "demolish"){
+
+            description =
+                "Delete premade • $25";
+
+        }
+
+        else if(id === "survivor"){
+
+            description =
+                "The person you protect";
+
+        }
+
+        else if(data.power){
+
+            description =
+                `${data.power} power`;
+
+        }
+
+        else{
+
+            description =
+                "No power";
+
+        }
+
+
+        element.innerHTML = `
+
+            <div class="left">
+
+                <span class="icon">
+                    ${data.icon}
+                </span>
+
+                <div>
+
+                    <b>
+                        ${data.name}
+                    </b>
+
+                    <div class="small">
+                        ${description}
+                    </div>
+
+                </div>
+
+            </div>
+
+            <span class="cost">
+
+                ${
+                    id === "survivor"
+                        ? "FREE"
+                        : moneyFmt(data.cost)
+                }
+
+            </span>
+
+        `;
+
+
+        element.onclick = () => {
+
+            selected = id;
+
+            rotation = 0;
+
+            makeShop();
+
+        };
+
+
+        root.appendChild(element);
+
+    }
+
+}
+
+
+makeShop();
+
+
+/* =========================================================
+   GRID
+========================================================= */
+
+function grid(value){
+
+    return Math.floor(
+        value / TILE
+    );
+
+}
+
+
+function screenToWorld(x,y){
+
+    return {
+
+        x:
+            x / camera.zoom +
+            camera.x,
+
+        y:
+            y / camera.zoom +
+            camera.y
+
+    };
+
+}
+
+
+/* =========================================================
+   RECTANGLE
+========================================================= */
+
+function rectFor(
+    x,
+    y,
+    data,
+    rot=0
+){
+
+    let w = data.w;
+
+    let h = data.h;
+
+
+    if(rot % 2){
+
+        [w,h] = [h,w];
+
+    }
+
+
+    return {
+
+        x,
+
+        y,
+
+        w,
+
+        h
+
+    };
+
+}
+
+
+/* =========================================================
+   BUILDING COLLISION
+========================================================= */
+
+function buildingOccupied(
+    floor,
+    rect
+){
+
+    return buildings[floor].some(
+        building => {
+
+            const data =
+                items[
+                    building.type
+                ];
+
+
+            const q =
+                rectFor(
+                    building.x,
+                    building.y,
+                    data,
+                    building.rot
+                );
+
+
+            return (
+
+                rect.x <
+                q.x + q.w &&
+
+                rect.x + rect.w >
+                q.x &&
+
+                rect.y <
+                q.y + q.h &&
+
+                rect.y + rect.h >
+                q.y
+
+            );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   PREMADE COLLISION
+========================================================= */
+
+function premadeOccupied(
+    floor,
+    rect
+){
+
+    return premade[floor].some(
+        object => {
+
+            return (
+
+                rect.x <
+                object.x + object.w &&
+
+                rect.x + rect.w >
+                object.x &&
+
+                rect.y <
+                object.y + object.h &&
+
+                rect.y + rect.h >
+                object.y
+
+            );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   SURVIVOR COLLISION
+========================================================= */
+
+function survivorOccupied(
+    floor,
+    rect
+){
+
+    if(!survivor.placed){
+
+        return false;
+
+    }
+
+
+    if(
+        survivor.floor !==
+        floor
+    ){
+
+        return false;
+
+    }
+
+
+    return (
+
+        rect.x <
+        survivor.x + 1 &&
+
+        rect.x + rect.w >
+        survivor.x &&
+
+        rect.y <
+        survivor.y + 1 &&
+
+        rect.y + rect.h >
+        survivor.y
+
+    );
+
+}
+
+
+/* =========================================================
+   INSIDE WORLD
+========================================================= */
+
+function inside(rect){
+
+    return (
+
+        rect.x >= 1 &&
+
+        rect.y >= 1 &&
+
+        rect.x + rect.w <=
+        COLS - 1 &&
+
+        rect.y + rect.h <=
+        ROWS - 1
+
+    );
+
+}
+
+
+/* =========================================================
+   PREMADE BASE
+========================================================= */
+
+function setupPremade(){
+
+    premade = {
+
+        0:[],
+
+        1:[],
+
+        2:[]
+
+    };
+
+
+    /*
+       DOWNSTAIRS
+       Mostly walls and rooms.
+    */
+
+    premade[0].push(
+
+        {
+            x:17,
+            y:10,
+            w:12,
+            h:1,
+            type:"wall"
+        },
+
+        {
+            x:17,
+            y:21,
+            w:12,
+            h:1,
+            type:"wall"
+        },
+
+        {
+            x:17,
+            y:10,
+            w:1,
+            h:12,
+            type:"wall"
+        },
+
+        {
+            x:28,
+            y:10,
+            w:1,
+            h:12,
+            type:"wall"
+        },
+
+        {
+            x:21,
+            y:15,
+            w:4,
+            h:1,
+            type:"wall"
+        }
+
+    );
+
+
+    /*
+       GROUND FLOOR
+       Main house.
+    */
+
+    premade[1].push(
+
+        {
+            x:17,
+            y:9,
+            w:13,
+            h:1,
+            type:"wall"
+        },
+
+        {
+            x:17,
+            y:22,
+            w:13,
+            h:1,
+            type:"wall"
+        },
+
+        {
+            x:17,
+            y:9,
+            w:1,
+            h:14,
+            type:"wall"
+        },
+
+        {
+            x:29,
+            y:9,
+            w:1,
+            h:14,
+            type:"wall"
+        },
+
+        {
+            x:21,
+            y:12,
+            w:2,
+            h:2,
+            type:"room"
+        },
+
+        {
+            x:25,
+            y:17,
+            w:2,
+            h:2,
+            type:"room"
+        }
+
+    );
+
+
+    /*
+       ROOF
+       Some cover, but mostly open.
+    */
+
+    premade[2].push(
+
+        {
+            x:17,
+            y:9,
+            w:13,
+            h:1,
+            type:"wall"
+        },
+
+        {
+            x:17,
+            y:22,
+            w:13,
+            h:1,
+            type:"wall"
+        },
+
+        {
+            x:17,
+            y:9,
+            w:1,
+            h:14,
+            type:"wall"
+        },
+
+        {
+            x:29,
+            y:9,
+            w:1,
+            h:14,
+            type:"wall"
+        },
+
+        {
+            x:19,
+            y:12,
+            w:2,
+            h:2,
+            type:"cover"
+        },
+
+        {
+            x:26,
+            y:18,
+            w:2,
+            h:2,
+            type:"cover"
+        }
+
+    );
+
+}
+
+
+/* =========================================================
+   DEMOLISH PREMADE
+========================================================= */
+
+function demolishPremade(){
+
+    if(
+        phase !== "build"
+    ){
+
+        toast(
+            "You can only demolish during build phase."
+        );
+
+        return;
+
+    }
+
+
+    const worldMouse =
+        screenToWorld(
+            mouse.sx,
+            mouse.sy
+        );
+
+
+    const x =
+        grid(worldMouse.x);
+
+    const y =
+        grid(worldMouse.y);
+
+
+    for(
+        let i =
+        premade[currentFloor].length - 1;
+
+        i >= 0;
+
+        i--
+    ){
+
+        const object =
+            premade[currentFloor][i];
+
+
+        if(
+
+            x >= object.x &&
+
+            x < object.x + object.w &&
+
+            y >= object.y &&
+
+            y < object.y + object.h
+
+        ){
+
+            if(
+                money < 25
+            ){
+
+                toast(
+                    "Need $25 to demolish this."
+                );
+
+                return;
+
+            }
+
+
+            money -= 25;
+
+
+            premade[
+                currentFloor
+            ].splice(
+                i,
+                1
+            );
+
+
+            toast(
+                "Premade object demolished • -$25"
+            );
+
+
+            updateUI();
+
+            return;
+
+        }
+
+    }
+
+
+    toast(
+        "No premade object here."
+    );
+
+}
+
+
+/* =========================================================
+   PLACE SURVIVOR
+========================================================= */
+
+function placeSurvivor(){
+
+    if(
+        phase !== "build"
+    ){
+
+        toast(
+            "Place the survivor during build phase."
+        );
+
+        return;
+
+    }
+
+
+    const worldMouse =
+        screenToWorld(
+            mouse.sx,
+            mouse.sy
+        );
+
+
+    const x =
+        grid(worldMouse.x);
+
+    const y =
+        grid(worldMouse.y);
+
+
+    const rect = {
+
+        x,
+
+        y,
+
+        w:1,
+
+        h:1
+
+    };
+
+
+    if(
+        !inside(rect)
+    ){
+
+        toast(
+            "Outside map."
+        );
+
+        return;
+
+    }
+
+
+    if(
+        buildingOccupied(
+            currentFloor,
+            rect
+        )
+    ){
+
+        toast(
+            "Blocked by building."
+        );
+
+        return;
+
+    }
+
+
+    if(
+        premadeOccupied(
+            currentFloor,
+            rect
+        )
+    ){
+
+        toast(
+            "Blocked by premade object."
+        );
+
+        return;
+
+    }
+
+
+    survivor = {
+
+        placed:true,
+
+        floor:currentFloor,
+
+        x,
+
+        y,
+
+        hp:100,
+
+        maxHp:100
+
+    };
+
+
+    selected = "wall";
+
+    makeShop();
+
+    toast(
+        "Survivor placed!"
+    );
+
+}
+
+
+/* =========================================================
+   PLACE BUILDING
+========================================================= */
+
+function placeBuilding(){
+
+    if(
+        phase !== "build"
+    ){
+
+        toast(
+            "Build phase only."
+        );
+
+        return;
+
+    }
+
+
+    if(
+        selected === "demolish"
+    ){
+
+        demolishPremade();
+
+        return;
+
+    }
+
+
+    if(
+        selected === "survivor"
+    ){
+
+        placeSurvivor();
+
+        return;
+
+    }
+
+
+    const data =
+        items[selected];
+
+
+    const worldMouse =
+        screenToWorld(
+            mouse.sx,
+            mouse.sy
+        );
+
+
+    const x =
+        grid(worldMouse.x);
+
+    const y =
+        grid(worldMouse.y);
+
+
+    const rect =
+        rectFor(
+            x,
+            y,
+            data,
+            rotation
+        );
+
+
+    if(
+        !inside(rect)
+    ){
+
+        toast(
+            "Outside build area."
+        );
+
+        return;
+
+    }
+
+
+    if(
+        buildingOccupied(
+            currentFloor,
+            rect
+        )
+    ){
+
+        toast(
+            "Blocked."
+        );
+
+        return;
+
+    }
+
+
+    if(
+        premadeOccupied(
+            currentFloor,
+            rect
+        )
+    ){
+
+        toast(
+            "Blocked by premade object."
+        );
+
+        return;
+
+    }
+
+
+    if(
+        survivorOccupied(
+            currentFloor,
+            rect
+        )
+    ){
+
+        toast(
+            "The survivor is there!"
+        );
+
+        return;
+
+    }
+
+
+    if(
+        money < data.cost
+    ){
+
+        toast(
+            "Not enough budget."
+        );
+
+        return;
+
+    }
+
+
+    money -=
+        data.cost;
+
+
+    buildings[currentFloor].push({
+
+        x,
+
+        y,
+
+        type:selected,
+
+        rot:rotation,
+
+        hp:data.hp,
+
+        maxHp:data.hp,
+
+        cd:0
+
+    });
+
+
+    updateUI();
+
+}
+
+
+/* =========================================================
+   REMOVE PLAYER OBJECT
+========================================================= */
+
+function removePlayerBuilding(){
+
+    const worldMouse =
+        screenToWorld(
+            mouse.sx,
+            mouse.sy
+        );
+
+
+    const x =
+        grid(worldMouse.x);
+
+    const y =
+        grid(worldMouse.y);
+
+
+    for(
+        let i =
+        buildings[currentFloor].length - 1;
+
+        i >= 0;
+
+        i--
+    ){
+
+        const building =
+            buildings[currentFloor][i];
+
+
+        const data =
+            items[
+                building.type
+            ];
+
+
+        const rect =
+            rectFor(
+                building.x,
+                building.y,
+                data,
+                building.rot
+            );
+
+
+        if(
+
+            x >= rect.x &&
+
+            x < rect.x + rect.w &&
+
+            y >= rect.y &&
+
+            y < rect.y + rect.h
+
+        ){
+
+            const refund =
+                Math.floor(
+                    data.cost * .6
+                );
+
+
+            money +=
+                refund;
+
+
+            buildings[
+                currentFloor
+            ].splice(
+                i,
+                1
+            );
+
+
+            toast(
+                `Removed • +${moneyFmt(refund)}`
+            );
+
+
+            updateUI();
+
+            return;
+
+        }
+
+    }
+
+
+    toast(
+        "No player object here."
+    );
+
+}
+
+
+/* =========================================================
+   POWER
+========================================================= */
+
+function powerStats(){
+
+    let generation = 0;
+
+    let usage = 0;
+
+
+    for(
+        const floor
+        of [0,1,2]
+    ){
+
+        for(
+            const building
+            of buildings[floor]
+        ){
+
+            if(
+                building.type ===
+                "generator"
+            ){
+
+                generation += 3;
+
+            }
+
+            else{
+
+                usage +=
+                    building.power ||
+                    0;
+
+            }
+
+        }
+
+    }
+
+
+    return {
+
+        generation,
+
+        usage
+
+    };
+
+}
+
+
+/*
+    Power is shared across all floors.
+*/
+
+function powered(building){
+
+    if(
+        !building.power
+    ){
+
+        return true;
+
+    }
+
+
+    const p =
+        powerStats();
+
+
+    /*
+       Buildings are powered in
+       placement order.
+    */
+
+    let usedBefore = 0;
+
+
+    for(
+        const floor
+        of [0,1,2]
+    ){
+
+        for(
+            const b
+            of buildings[floor]
+        ){
+
+            if(
+                b === building
+            ){
+
+                return (
+                    usedBefore +
+                    building.power
+                ) <= p.generation;
+
+            }
+
+
+            if(
+                b.type !==
+                "generator"
+            ){
+
+                usedBefore +=
+                    b.power ||
+                    0;
+
+            }
+
+        }
+
+    }
+
+
+    return false;
+
+}
+
+
+/* =========================================================
+   ZOMBIE SPAWN
+========================================================= */
+
+function spawnZombie(){
+
+    const side =
+        Math.floor(
+            Math.random() * 4
+        );
+
+
+    let x;
+
+    let y;
+
+
+    if(side === 0){
+
+        x =
+            Math.random() *
+            COLS;
+
+        y = -1;
+
+    }
+
+    else if(side === 1){
+
+        x =
+            COLS + 1;
+
+        y =
+            Math.random() *
+            ROWS;
+
+    }
+
+    else if(side === 2){
+
+        x =
+            Math.random() *
+            COLS;
+
+        y =
+            ROWS + 1;
+
+    }
+
+    else{
+
+        x = -1;
+
+        y =
+            Math.random() *
+            ROWS;
+
+    }
+
+
+    const tank =
+        Math.random() <
+        Math.min(
+            .1,
+            wave * .012
+        );
+
+
+    const runner =
+        !tank &&
+        Math.random() <
+        Math.min(
+            .2,
+            wave * .018
+        );
+
+
+    const hp =
+
+        (
+            tank
+                ? 210
+                :
+            runner
+                ? 48
+                :
+                78
+        )
+
+        +
+
+        wave *
+        (
+            tank
+                ? 20
+                :
+                8
+        );
+
+
+    zombies.push({
+
+        x:x*TILE,
+
+        y:y*TILE,
+
+        r:
+            tank
+                ? 15
+                :
+            runner
+                ? 8
+                :
+                10,
+
+        hp,
+
+        maxHp:hp,
+
+        speed:
+
+            (
+                tank
+                    ? 22
+                    :
+                runner
+                    ? 65
+                    :
+                    38
+            )
+
+            +
+
+            wave * 1.5,
+
+        damage:
+            tank
+                ? 22
+                :
+                runner
+                    ? 8
+                    :
+                    10,
+
+        hit:0,
+
+        floor:
+            Math.random() < .5
+                ? 1
+                : 0
+
+    });
+
+}
+
+
+/* =========================================================
+   TARGET
+========================================================= */
+
+function nearestZombie(
+    x,
+    y,
+    range
+){
+
+    let best = null;
+
+    let bestDistance =
+        Infinity;
+
+
+    for(
+        const zombie
+        of zombies
+    ){
+
+        const distance =
+            Math.hypot(
+                zombie.x - x,
+                zombie.y - y
+            );
+
+
+        if(
+
+            distance <=
+            range * TILE &&
+
+            distance <
+            bestDistance
+
+        ){
+
+            best =
+                zombie;
+
+            bestDistance =
+                distance;
+
+        }
+
+    }
+
+
+    return best;
+
+}
+
+
+/* =========================================================
+   SHOOT
+========================================================= */
+
+function shootAt(
+    building,
+    zombie
+){
+
+    const data =
+        items[
+            building.type
+        ];
+
+
+    const sx =
+        (
+            building.x +
+            data.w / 2
+        ) * TILE;
+
+
+    const sy =
+        (
+            building.y +
+            data.h / 2
+        ) * TILE;
+
+
+    shots.push({
+
+        x:sx,
+
+        y:sy,
+
+        tx:zombie.x,
+
+        ty:zombie.y,
+
+        life:.15,
+
+        damage:data.damage
+
+    });
+
+
+    building.cd =
+        data.rate;
+
+}
+
+
+/* =========================================================
+   MINE
+========================================================= */
+
+function checkMines(){
+
+    for(
+        const building
+        of buildings[0]
+    ){
+
+        if(
+            building.type !==
+            "mine"
+        ){
+
+            continue;
+
+        }
+
+
+        const cx =
+            (
+                building.x +
+                .5
+            ) * TILE;
+
+
+        const cy =
+            (
+                building.y +
+                .5
+            ) * TILE;
+
+
+        const zombie =
+            zombies.find(
+                z =>
+                    Math.hypot(
+                        z.x - cx,
+                        z.y - cy
+                    )
+                    <
+                    TILE * 1.25
+            );
+
+
+        if(zombie){
+
+            for(
+                const z
+                of zombies
+            ){
+
+                if(
+                    Math.hypot(
+                        z.x - cx,
+                        z.y - cy
+                    )
+                    <
+                    TILE * 1.8
+                ){
+
+                    z.hp -= 110;
+
+                }
+
+            }
+
+
+            for(
+                let i=0;
+                i<20;
+                i++
+            ){
+
+                particles.push({
+
+                    x:cx,
+
+                    y:cy,
+
+                    vx:
+                        (Math.random()-.5) *
+                        180,
+
+                    vy:
+                        (Math.random()-.5) *
+                        180,
+
+                    life:.5,
+
+                    max:.5,
+
+                    type:"boom"
+
+                });
+
+            }
+
+
+            const index =
+                buildings[0].indexOf(
+                    building
+                );
+
+
+            if(index >= 0){
+
+                buildings[0].splice(
+                    index,
+                    1
+                );
+
+            }
+
+        }
+
+    }
+
+}
+
+
+/* =========================================================
+   BUILDING COLLISION
+========================================================= */
+
+function findBuildingHit(
+    zombie
+){
+
+    let result = null;
+
+    let closest =
+        Infinity;
+
+
+    /*
+       Zombies attack the ground
+       floor first.
+    */
+
+    for(
+        const building
+        of buildings[1]
+    ){
+
+        const data =
+            items[
+                building.type
+            ];
+
+
+        const rect =
+            rectFor(
+                building.x,
+                building.y,
+                data,
+                building.rot
+            );
+
+
+        const left =
+            rect.x * TILE;
+
+        const right =
+            (
+                rect.x +
+                rect.w
+            ) * TILE;
+
+        const top =
+            rect.y * TILE;
+
+        const bottom =
+            (
+                rect.y +
+                rect.h
+            ) * TILE;
+
+
+        const cx =
+            Math.max(
+                left,
+                Math.min(
+                    zombie.x,
+                    right
+                )
+            );
+
+
+        const cy =
+            Math.max(
+                top,
+                Math.min(
+                    zombie.y,
+                    bottom
+                )
+            );
+
+
+        const distance =
+            Math.hypot(
+                zombie.x-cx,
+                zombie.y-cy
+            );
+
+
+        if(
+
+            distance <
+            zombie.r + 5 &&
+
+            distance <
+            closest
+
+        ){
+
+            result =
+                building;
+
+            closest =
+                distance;
+
+        }
+
+    }
+
+
+    return result;
+
+}
+
+
+/* =========================================================
+   ZOMBIE UPDATE
+========================================================= */
+
+function updateZombies(dt){
+
+    for(
+        const zombie
+        of zombies
+    ){
+
+        const target =
+            findBuildingHit(
+                zombie
+            );
+
+
+        if(target){
+
+            zombie.hit -= dt;
+
+
+            if(
+                zombie.hit <= 0
+            ){
+
+                target.hp -=
+                    zombie.damage;
+
+                zombie.hit =
+                    .8;
+
+            }
+
+
+            continue;
+
+        }
+
+
+        /*
+           Zombies ultimately move
+           toward the survivor.
+        */
+
+        let targetX =
+            world.w / 2;
+
+        let targetY =
+            world.h / 2;
+
+
+        if(
+            survivor.placed
+        ){
+
+            targetX =
+                (
+                    survivor.x +
+                    .5
+                ) * TILE;
+
+            targetY =
+                (
+                    survivor.y +
+                    .5
+                ) * TILE;
+
+        }
+
+
+        const dx =
+            targetX -
+            zombie.x;
+
+
+        const dy =
+            targetY -
+            zombie.y;
+
+
+        const distance =
+            Math.hypot(
+                dx,
+                dy
+            ) || 1;
+
+
+        zombie.x +=
+            dx / distance *
+            zombie.speed *
+            dt;
+
+
+        zombie.y +=
+            dy / distance *
+            zombie.speed *
+            dt;
+
+
+        if(
+            survivor.placed
+        ){
+
+            const survivorX =
+                (
+                    survivor.x +
+                    .5
+                ) * TILE;
+
+
+            const survivorY =
+                (
+                    survivor.y +
+                    .5
+                ) * TILE;
+
+
+            const survivorDistance =
+                Math.hypot(
+                    zombie.x -
+                    survivorX,
+
+                    zombie.y -
+                    survivorY
+                );
+
+
+            if(
+                survivorDistance <
+                TILE * .7
+            ){
+
+                survivor.hp -=
+                    zombie.damage *
+                    dt *
+                    .45;
+
+            }
+
+        }
+
+
+        const centerDistance =
+            Math.hypot(
+                zombie.x -
+                world.w/2,
+
+                zombie.y -
+                world.h/2
+            );
+
+
+        if(
+            centerDistance <
+            55 &&
+            !survivor.placed
+        ){
+
+            baseHP -=
+                zombie.damage *
+                dt *
+                .18;
+
+        }
+
+    }
+
+
+    /*
+       Destroyed buildings.
+    */
+
+    for(
+        const floor
+        of [0,1,2]
+    ){
+
+        buildings[floor] =
+            buildings[floor].filter(
+                building => {
+
+                    if(
+                        building.hp <= 0
+                    ){
+
+                        toast(
+                            `${items[building.type].name} destroyed!`
+                        );
+
+                        return false;
+
+                    }
+
+                    return true;
+
+                }
+            );
+
+    }
+
+
+    /*
+       Remove dead zombies.
+    */
+
+    for(
+        let i =
+        zombies.length - 1;
+
+        i >= 0;
+
+        i--
+    ){
+
+        if(
+            zombies[i].hp <= 0
+        ){
+
+            const zombie =
+                zombies[i];
+
+
+            money +=
+                10 +
+                Math.floor(
+                    wave * 1.5
+                );
+
+
+            for(
+                let p=0;
+                p<7;
+                p++
+            ){
+
+                particles.push({
+
+                    x:zombie.x,
+
+                    y:zombie.y,
+
+                    vx:
+                        (Math.random()-.5) *
+                        80,
+
+                    vy:
+                        (Math.random()-.5) *
+                        80,
+
+                    life:.35,
+
+                    max:.35,
+
+                    type:"hit"
+
+                });
+
+            }
+
+
+            zombies.splice(
+                i,
+                1
+            );
+
+        }
+
+    }
+
+
+    if(
+        survivor.placed &&
+        survivor.hp <= 0
+    ){
+
+        endGame(false,"Your survivor was defeated.");
+
+    }
+
+
+    if(
+        baseHP <= 0
+    ){
+
+        endGame(
+            false,
+            "Your base was destroyed."
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   DEFENCE UPDATE
+========================================================= */
+
+function updateDefences(dt){
+
+    for(
+        const floor
+        of [0,1,2]
+    ){
+
+        for(
+            const building
+            of buildings[floor]
+        ){
+
+            if(
+                building.cd > 0
+            ){
+
+                building.cd -= dt;
+
+            }
+
+
+            if(
+                !powered(building)
+            ){
+
+                continue;
+
+            }
+
+
+            if(
+
+                (
+                    building.type ===
+                    "turret"
+
+                    ||
+
+                    building.type ===
+                    "heavy"
+                )
+
+                &&
+
+                building.cd <= 0
+
+            ){
+
+                const data =
+                    items[
+                        building.type
+                    ];
+
+
+                const cx =
+                    (
+                        building.x +
+                        data.w / 2
+                    ) * TILE;
+
+
+                const cy =
+                    (
+                        building.y +
+                        data.h / 2
+                    ) * TILE;
+
+
+                const target =
+                    nearestZombie(
+                        cx,
+                        cy,
+                        data.range
+                    );
+
+
+                if(target){
+
+                    shootAt(
+                        building,
+                        target
+                    );
+
+                }
+
+            }
+
+        }
+
+    }
+
+
+    for(
+        const shot
+        of shots
+    ){
+
+        shot.life -= dt;
+
+
+        if(
+            shot.life <= 0
+        ){
+
+            continue;
+
+        }
+
+
+        const zombie =
+            zombies.find(
+                z =>
+                    Math.hypot(
+                        z.x-shot.tx,
+                        z.y-shot.ty
+                    )
+                    <
+                    z.r + 12
+            );
+
+
+        if(zombie){
+
+            zombie.hp -=
+                shot.damage;
+
+        }
+
+    }
+
+
+    shots =
+        shots.filter(
+            shot =>
+                shot.life > 0
+        );
+
+
+    checkMines();
+
+}
+
+
+/* =========================================================
+   PARTICLES
+========================================================= */
+
+function updateParticles(dt){
+
+    for(
+        const p
+        of particles
+    ){
+
+        p.life -= dt;
+
+        p.x +=
+            p.vx * dt;
+
+        p.y +=
+            p.vy * dt;
+
+        p.vy +=
+            70 * dt;
+
+    }
+
+
+    particles =
+        particles.filter(
+            p =>
+                p.life > 0
+        );
+
+}
+
+
+/* =========================================================
+   WAVES
+========================================================= */
+
+function startWave(){
+
+    if(
+        !survivor.placed
+    ){
+
+        toast(
+            "You must place your survivor first!"
+        );
+
+        return;
+
+    }
+
+
+    phase =
+        "wave";
+
+    buildTime = 0;
+
+    waveTime = 0;
+
+    spawnTimer = .2;
+
+    toast(
+        `WAVE ${wave} INCOMING!`
+    );
+
+}
+
+
+function finishWave(){
+
+    if(
+        wave >= 10
+    ){
+
+        endGame(
+            true,
+            "You survived all 10 waves!"
+        );
+
+        return;
+
+    }
+
+
+    const reward =
+        250 +
+        wave * 80;
+
+
+    money +=
+        reward;
+
+
+    wave++;
+
+    phase =
+        "build";
+
+    buildTime =
+        300;
+
+    waveTime =
+        0;
+
+    zombies = [];
+
+    shots = [];
+
+
+    toast(
+        `Wave cleared! +${moneyFmt(reward)}`
+    );
+
+}
+
+
+/* =========================================================
+   END GAME
+========================================================= */
+
+function endGame(
+    win,
+    message
+){
+
+    running = false;
+
+
+    const box =
+        document.getElementById(
+            "gameover"
+        );
+
+
+    box.style.display =
+        "block";
+
+
+    document.getElementById(
+        "endTitle"
+    ).textContent =
+        win
+            ? "🏆 YOU SURVIVED!"
+            : "💀 BASE LOST";
+
+
+    document.getElementById(
+        "endText"
+    ).textContent =
+        `${message} Final budget: ${moneyFmt(money)}.`;
+
+}
+
+
+/* =========================================================
+   RESET
+========================================================= */
+
+function reset(){
+
+    money = 1000;
+
+    baseHP = 100;
+
+    wave = 1;
+
+    phase =
+        "build";
+
+    buildTime =
+        300;
+
+    waveTime = 0;
+
+    buildings = {
+
+        0:[],
+
+        1:[],
+
+        2:[]
+
+    };
+
+
+    survivor = {
+
+        placed:false,
+
+        floor:1,
+
+        x:23,
+
+        y:16,
+
+        hp:100,
+
+        maxHp:100
+
+    };
+
+
+    zombies = [];
+
+    shots = [];
+
+    particles = [];
+
+    selected =
+        "wall";
+
+    rotation = 0;
+
+    currentFloor = 1;
+
+
+    setupPremade();
+
+    makeShop();
+
+    updateFloorButtons();
+
+    fitCamera();
+
+    updateUI();
+
+}
+
+
+/* =========================================================
+   CAMERA FIT
+========================================================= */
+
+function fitCamera(){
+
+    const margin =
+        40;
+
+
+    const zx =
+        (
+            W -
+            margin * 2
+        ) /
+        world.w;
+
+
+    const zy =
+        (
+            H -
+            margin * 2
+        ) /
+        world.h;
+
+
+    camera.zoom =
+        Math.max(
+            .55,
+
+            Math.min(
+                1.3,
+
+                Math.min(
+                    zx,
+                    zy
+                )
+            )
+        );
+
+
+    camera.x =
+        (
+            world.w -
+            W / camera.zoom
+        ) / 2;
+
+
+    camera.y =
+        (
+            world.h -
+            H / camera.zoom
+        ) / 2;
+
+}
+
+
+/* =========================================================
+   CAMERA CLAMP
+========================================================= */
+
+function clampCamera(){
+
+    const maxX =
+        Math.max(
+            0,
+            world.w -
+            W / camera.zoom
+        );
+
+
+    const maxY =
+        Math.max(
+            0,
+            world.h -
+            H / camera.zoom
+        );
+
+
+    camera.x =
+        Math.max(
+            0,
+            Math.min(
+                maxX,
+                camera.x
+            )
+        );
+
+
+    camera.y =
+        Math.max(
+            0,
+            Math.min(
+                maxY,
+                camera.y
+            )
+        );
+
+}
+
+
+/* =========================================================
+   FLOOR BUTTONS
+========================================================= */
+
+function updateFloorButtons(){
+
+    document
+        .querySelectorAll(".floorBtn")
+        .forEach(button => {
+
+            button.classList.toggle(
+                "active",
+
+                Number(
+                    button.dataset.floor
+                ) ===
+                currentFloor
+
+            );
+
+        });
+
+}
+
+
+document
+    .querySelectorAll(".floorBtn")
+    .forEach(button => {
+
+        button.onclick = () => {
+
+            currentFloor =
+                Number(
+                    button.dataset.floor
+                );
+
+            updateFloorButtons();
+
+            toast(
+                FLOOR_NAMES[currentFloor]
+            );
+
+        };
+
+    });
+
+
+/* =========================================================
+   UI
+========================================================= */
+
+function updateUI(){
+
+    const power =
+        powerStats();
+
+
+    document.getElementById(
+        "money"
+    ).textContent =
+        moneyFmt(money);
+
+
+    document.getElementById(
+        "power"
+    ).textContent =
+        `${power.usage} / ${power.generation}`;
+
+
+    document.getElementById(
+        "survivor"
+    ).textContent =
+
+        survivor.placed
+
+            ?
+
+        `${Math.max(
+            0,
+            Math.floor(
+                survivor.hp
+            )
+        )}%`
+
+            :
+
+        "NOT PLACED";
+
+
+    document.getElementById(
+        "base"
+    ).textContent =
+        Math.max(
+            0,
+            Math.floor(
+                baseHP
+            )
+        ) + "%";
+
+
+    document.getElementById(
+        "zombies"
+    ).textContent =
+        zombies.length;
+
+
+    document.getElementById(
+        "phaseText"
+    ).textContent =
+
+        phase === "build"
+
+            ?
+
+        `BUILD PHASE • WAVE ${wave}`
+
+            :
+
+        `WAVE ${wave}`;
+
+
+    if(
+        phase === "build"
+    ){
+
+        const seconds =
+            Math.max(
+                0,
+                Math.ceil(
+                    buildTime
+                )
+            );
+
+
+        const minutes =
+            String(
+                Math.floor(
+                    seconds / 60
+                )
+            )
+            .padStart(
+                2,
+                "0"
+            );
+
+
+        const secs =
+            String(
+                seconds % 60
+            )
+            .padStart(
+                2,
+                "0"
+            );
+
+
+        document.getElementById(
+            "timer"
+        ).textContent =
+            `${minutes}:${secs}`;
+
+    }
+
+    else{
+
+        document.getElementById(
+            "timer"
+        ).textContent =
+            `${Math.max(
+                0,
+                Math.ceil(
+                    waveDuration -
+                    waveTime
+                )
+            )}s`;
+
+    }
+
+
+    if(
+        selected === "demolish"
+    ){
+
+        document.getElementById(
+            "hint"
+        ).textContent =
+            "❌ Click a red X to demolish a premade object for $25.";
+
+    }
+
+    else if(
+        selected === "survivor"
+    ){
+
+        document.getElementById(
+            "hint"
+        ).textContent =
+            "🧍 Place your survivor somewhere safe.";
+
+    }
+
+    else if(
+        phase === "build"
+    ){
+
+        document.getElementById(
+            "hint"
+        ).textContent =
+            `Building on ${FLOOR_NAMES[currentFloor]}. Keep your generators protected.`;
+
+    }
+
+    else{
+
+        document.getElementById(
+            "hint"
+        ).textContent =
+            "🧟 Survive the wave!";
+
+    }
+
+}
+
+
+/* =========================================================
+   UPDATE
+========================================================= */
+
+function update(dt){
+
+    if(
+        phase === "build"
+    ){
+
+        buildTime -= dt;
+
+
+        if(
+            buildTime <= 0
+        ){
+
+            startWave();
+
+        }
+
+    }
+
+
+    else if(
+        phase === "wave"
+    ){
+
+        waveTime += dt;
+
+        spawnTimer -= dt;
+
+
+        const spawnRate =
+            Math.max(
+                .22,
+                1.05 -
+                wave * .055
+            );
+
+
+        if(
+            spawnTimer <= 0
+        ){
+
+            spawnZombie();
+
+            spawnTimer =
+                spawnRate;
+
+        }
+
+
+        updateDefences(dt);
+
+        updateZombies(dt);
+
+
+        if(
+
+            waveTime >=
+            waveDuration &&
+
+            zombies.length === 0
+
+        ){
+
+            finishWave();
+
+        }
+
+    }
+
+
+    updateParticles(dt);
+
+    updateUI();
+
+}
+
+
+/* =========================================================
+   DRAW
+========================================================= */
+
+function draw(){
+
+    ctx.clearRect(
+        0,
+        0,
+        W,
+        H
+    );
+
+
+    ctx.fillStyle =
+        "#08111d";
+
+
+    ctx.fillRect(
+        0,
+        0,
+        W,
+        H
+    );
+
+
+    ctx.save();
+
+
+    ctx.translate(
+        -camera.x *
+        camera.zoom,
+
+        -camera.y *
+        camera.zoom
+    );
+
+
+    ctx.scale(
+        camera.zoom,
+        camera.zoom
+    );
+
+
+    drawGround();
+
+    drawPremade();
+
+    drawBuildings();
+
+    drawSurvivor();
+
+    drawZombies();
+
+    drawShots();
+
+    drawParticles();
+
+    drawGhost();
+
+    ctx.restore();
+
+}
+
+
+/* =========================================================
+   GROUND
+========================================================= */
+
+function drawGround(){
+
+    ctx.fillStyle =
+        currentFloor === 2
+            ? "#334155"
+            :
+        currentFloor === 0
+            ? "#111827"
+            :
+            "#18251b";
+
+
+    ctx.fillRect(
+        0,
+        0,
+        world.w,
+        world.h
+    );
+
+
+    /*
+       Floor grid.
+    */
+
+    ctx.strokeStyle =
+        "rgba(255,255,255,.055)";
+
+
+    ctx.lineWidth = 1;
+
+
+    for(
+        let x=0;
+        x<=COLS;
+        x++
+    ){
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            x*TILE,
+            0
+        );
+
+        ctx.lineTo(
+            x*TILE,
+            world.h
+        );
+
+        ctx.stroke();
+
+    }
+
+
+    for(
+        let y=0;
+        y<=ROWS;
+        y++
+    ){
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            0,
+            y*TILE
+        );
+
+        ctx.lineTo(
+            world.w,
+            y*TILE
+        );
+
+        ctx.stroke();
+
+    }
+
+
+    /*
+       Building footprint.
+    */
+
+    ctx.fillStyle =
+        currentFloor === 2
+            ? "rgba(15,23,42,.5)"
+            :
+            "rgba(20,50,25,.6)";
+
+
+    ctx.fillRect(
+
+        17*TILE,
+
+        9*TILE,
+
+        13*TILE,
+
+        14*TILE
+
+    );
+
+
+    ctx.strokeStyle =
+        "rgba(255,255,255,.2)";
+
+
+    ctx.lineWidth = 4;
+
+
+    ctx.strokeRect(
+
+        17*TILE,
+
+        9*TILE,
+
+        13*TILE,
+
+        14*TILE
+
+    );
+
+}
+
+
+/* =========================================================
+   PREMADE
+========================================================= */
+
+function drawPremade(){
+
+    for(
+        const object
+        of premade[currentFloor]
+    ){
+
+        let fill =
+            "#6b7280";
+
+
+        if(
+            object.type ===
+            "room"
+        ){
+
+            fill =
+                "#475569";
+
+        }
+
+
+        if(
+            object.type ===
+            "cover"
+        ){
+
+            fill =
+                "#64748b";
+
+        }
+
+
+        ctx.fillStyle =
+            fill;
+
+
+        ctx.fillRect(
+
+            object.x*TILE,
+
+            object.y*TILE,
+
+            object.w*TILE,
+
+            object.h*TILE
+
+        );
+
+
+        ctx.strokeStyle =
+            "rgba(255,255,255,.35)";
+
+
+        ctx.lineWidth = 2;
+
+
+        ctx.strokeRect(
+
+            object.x*TILE,
+
+            object.y*TILE,
+
+            object.w*TILE,
+
+            object.h*TILE
+
+        );
+
+
+        /*
+           X markers when demolish
+           tool is selected.
+        */
+
+        if(
+            selected === "demolish"
+        ){
+
+            const cx =
+                (
+                    object.x +
+                    object.w/2
+                ) * TILE;
+
+
+            const cy =
+                (
+                    object.y +
+                    object.h/2
+                ) * TILE;
+
+
+            ctx.fillStyle =
+                "rgba(239,68,68,.85)";
+
+
+            ctx.beginPath();
+
+            ctx.arc(
+                cx,
+                cy,
+                Math.min(
+                    object.w,
+                    object.h
+                ) * TILE * .28,
+                0,
+                Math.PI*2
+            );
+
+            ctx.fill();
+
+
+            ctx.strokeStyle =
+                "white";
+
+
+            ctx.lineWidth = 3;
+
+
+            ctx.beginPath();
+
+            ctx.moveTo(
+                cx-7,
+                cy-7
+            );
+
+            ctx.lineTo(
+                cx+7,
+                cy+7
+            );
+
+            ctx.moveTo(
+                cx+7,
+                cy-7
+            );
+
+            ctx.lineTo(
+                cx-7,
+                cy+7
+            );
+
+            ctx.stroke();
+
+        }
+
+    }
+
+}
+
+
+/* =========================================================
+   BUILDINGS
+========================================================= */
+
+function drawBuildings(){
+
+    for(
+        const building
+        of buildings[currentFloor]
+    ){
+
+        const data =
+            items[
+                building.type
+            ];
+
+
+        const rect =
+            rectFor(
+                building.x,
+                building.y,
+                data,
+                building.rot
+            );
+
+
+        const x =
+            rect.x*TILE;
+
+
+        const y =
+            rect.y*TILE;
+
+
+        const w =
+            rect.w*TILE;
+
+
+        const h =
+            rect.h*TILE;
+
+
+        ctx.fillStyle =
+            data.color;
+
+
+        ctx.fillRect(
+
+            x+2,
+            y+2,
+            w-4,
+            h-4
+
+        );
+
+
+        ctx.strokeStyle =
+            powered(building)
+
+                ?
+
+            "rgba(255,255,255,.5)"
+
+                :
+
+            "#ef4444";
+
+
+        ctx.lineWidth = 2;
+
+
+        ctx.strokeRect(
+
+            x+2,
+            y+2,
+            w-4,
+            h-4
+
+        );
+
+
+        ctx.font =
+            Math.min(w,h) *
+            .52 +
+            "px Arial";
+
+
+        ctx.textAlign =
+            "center";
+
+
+        ctx.textBaseline =
+            "middle";
+
+
+        ctx.fillText(
+
+            data.icon,
+
+            x+w/2,
+
+            y+h/2
+
+        );
+
+
+        /*
+           Health bar.
+        */
+
+        if(
+            building.hp <
+            data.hp
+        ){
+
+            ctx.fillStyle =
+                "#111827";
+
+
+            ctx.fillRect(
+
+                x+3,
+
+                y-7,
+
+                w-6,
+
+                4
+
+            );
+
+
+            ctx.fillStyle =
+                "#22c55e";
+
+
+            ctx.fillRect(
+
+                x+3,
+
+                y-7,
+
+                (
+                    w-6
+                ) *
+                Math.max(
+                    0,
+                    building.hp /
+                    data.hp
+                ),
+
+                4
+
+            );
+
+        }
+
+
+        /*
+           Power warning.
+        */
+
+        if(
+
+            (
+                building.type ===
+                "turret"
+
+                ||
+
+                building.type ===
+                "heavy"
+            )
+
+            &&
+
+            !powered(building)
+
+        ){
+
+            ctx.fillStyle =
+                "#ef4444";
+
+
+            ctx.font =
+                "bold 11px Arial";
+
+
+            ctx.fillText(
+
+                "NO POWER",
+
+                x+w/2,
+
+                y+h+10
+
+            );
+
+        }
+
+    }
+
+}
+
+
+/* =========================================================
+   SURVIVOR
+========================================================= */
+
+function drawSurvivor(){
+
+    if(
+        !survivor.placed ||
+        survivor.floor !==
+        currentFloor
+    ){
+
+        return;
+
+    }
+
+
+    const x =
+        (
+            survivor.x +
+            .5
+        ) * TILE;
+
+
+    const y =
+        (
+            survivor.y +
+            .5
+        ) * TILE;
+
+
+    /*
+       Glow.
+    */
+
+    ctx.beginPath();
+
+    ctx.fillStyle =
+        "rgba(250,204,21,.2)";
+
+
+    ctx.arc(
+        x,
+        y,
+        25,
+        0,
+        Math.PI*2
+    );
+
+
+    ctx.fill();
+
+
+    /*
+       Character.
+    */
+
+    ctx.beginPath();
+
+    ctx.fillStyle =
+        "#f8fafc";
+
+
+    ctx.arc(
+        x,
+        y-6,
+        7,
+        0,
+        Math.PI*2
+    );
+
+
+    ctx.fill();
+
+
+    ctx.strokeStyle =
+        "#2563eb";
+
+
+    ctx.lineWidth = 3;
+
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        x,
+        y+1
+    );
+
+    ctx.lineTo(
+        x,
+        y+12
+    );
+
+    ctx.moveTo(
+        x-7,
+        y+5
+    );
+
+    ctx.lineTo(
+        x+7,
+        y+5
+    );
+
+    ctx.moveTo(
+        x,
+        y+12
+    );
+
+    ctx.lineTo(
+        x-6,
+        y+19
+    );
+
+    ctx.moveTo(
+        x,
+        y+12
+    );
+
+    ctx.lineTo(
+        x+6,
+        y+19
+    );
+
+    ctx.stroke();
+
+
+    /*
+       HP bar.
+    */
+
+    ctx.fillStyle =
+        "#111";
+
+
+    ctx.fillRect(
+        x-15,
+        y-27,
+        30,
+        5
+    );
+
+
+    ctx.fillStyle =
+        "#22c55e";
+
+
+    ctx.fillRect(
+
+        x-15,
+
+        y-27,
+
+        30 *
+        Math.max(
+            0,
+            survivor.hp /
+            survivor.maxHp
+        ),
+
+        5
+
+    );
+
+
+    ctx.fillStyle =
+        "#fff";
+
+
+    ctx.font =
+        "bold 10px Arial";
+
+
+    ctx.textAlign =
+        "center";
+
+
+    ctx.fillText(
+        "PROTECT",
+        x,
+        y+30
+    );
+
+}
+
+
+/* =========================================================
+   ZOMBIES
+========================================================= */
+
+function drawZombies(){
+
+    for(
+        const zombie
+        of zombies
+    ){
+
+        ctx.beginPath();
+
+
+        ctx.fillStyle =
+            "#65a30d";
+
+
+        ctx.arc(
+
+            zombie.x,
+
+            zombie.y,
+
+            zombie.r,
+
+            0,
+
+            Math.PI*2
+
+        );
+
+
+        ctx.fill();
+
+
+        /*
+           Eyes.
+        */
+
+        ctx.fillStyle =
+            "#172b0b";
+
+
+        ctx.beginPath();
+
+
+        ctx.arc(
+            zombie.x-3,
+            zombie.y-2,
+            2,
+            0,
+            Math.PI*2
+        );
+
+
+        ctx.arc(
+            zombie.x+3,
+            zombie.y-2,
+            2,
+            0,
+            Math.PI*2
+        );
+
+
+        ctx.fill();
+
+
+        /*
+           Health.
+        */
+
+        ctx.fillStyle =
+            "#111";
+
+
+        ctx.fillRect(
+
+            zombie.x-zombie.r,
+
+            zombie.y-zombie.r-7,
+
+            zombie.r*2,
+
+            3
+
+        );
+
+
+        ctx.fillStyle =
+            "#ef4444";
+
+
+        ctx.fillRect(
+
+            zombie.x-zombie.r,
+
+            zombie.y-zombie.r-7,
+
+            zombie.r*2 *
+            Math.max(
+                0,
+                zombie.hp /
+                zombie.maxHp
+            ),
+
+            3
+
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   SHOTS
+========================================================= */
+
+function drawShots(){
+
+    for(
+        const shot
+        of shots
+    ){
+
+        ctx.strokeStyle =
+            "#fde047";
+
+
+        ctx.lineWidth = 3;
+
+
+        ctx.beginPath();
+
+
+        ctx.moveTo(
+            shot.x,
+            shot.y
+        );
+
+
+        ctx.lineTo(
+            shot.tx,
+            shot.ty
+        );
+
+
+        ctx.stroke();
+
+    }
+
+}
+
+
+/* =========================================================
+   PARTICLES
+========================================================= */
+
+function drawParticles(){
+
+    for(
+        const p
+        of particles
+    ){
+
+        ctx.globalAlpha =
+            Math.max(
+                0,
+                p.life /
+                p.max
+            );
+
+
+        ctx.fillStyle =
+            p.type === "boom"
+                ? "#f59e0b"
+                : "#ef4444";
+
+
+        ctx.beginPath();
+
+
+        ctx.arc(
+
+            p.x,
+
+            p.y,
+
+            3 +
+            5 *
+            (
+                1 -
+                p.life /
+                p.max
+            ),
+
+            0,
+
+            Math.PI*2
+
+        );
+
+
+        ctx.fill();
+
+    }
+
+
+    ctx.globalAlpha = 1;
+
+}
+
+
+/* =========================================================
+   GHOST
+========================================================= */
+
+function drawGhost(){
+
+    if(
+        !running ||
+        phase !== "build"
+    ){
+
+        return;
+
+    }
+
+
+    if(
+        selected ===
+        "demolish"
+    ){
+
+        return;
+
+    }
+
+
+    if(
+        selected ===
+        "survivor" &&
+        survivor.placed
+    ){
+
+        return;
+
+    }
+
+
+    const data =
+        items[selected];
+
+
+    const worldMouse =
+        screenToWorld(
+            mouse.sx,
+            mouse.sy
+        );
+
+
+    const x =
+        grid(worldMouse.x);
+
+
+    const y =
+        grid(worldMouse.y);
+
+
+    const rect =
+        rectFor(
+            x,
+            y,
+            data,
+            rotation
+        );
+
+
+    const valid =
+
+        inside(rect) &&
+
+        !buildingOccupied(
+            currentFloor,
+            rect
+        ) &&
+
+        !premadeOccupied(
+            currentFloor,
+            rect
+        ) &&
+
+        !survivorOccupied(
+            currentFloor,
+            rect
+        ) &&
+
+        (
+            selected ===
+            "survivor"
+                ?
+            true
+                :
+            money >= data.cost
+        );
+
+
+    ctx.fillStyle =
+        valid
+            ?
+        "rgba(34,197,94,.3)"
+            :
+        "rgba(239,68,68,.3)";
+
+
+    ctx.fillRect(
+
+        rect.x*TILE,
+
+        rect.y*TILE,
+
+        rect.w*TILE,
+
+        rect.h*TILE
+
+    );
+
+
+    ctx.strokeStyle =
+        valid
+            ?
+        "#22c55e"
+            :
+        "#ef4444";
+
+
+    ctx.lineWidth = 2;
+
+
+    ctx.strokeRect(
+
+        rect.x*TILE,
+
+        rect.y*TILE,
+
+        rect.w*TILE,
+
+        rect.h*TILE
+
+    );
+
+}
+
+
+/* =========================================================
+   MOUSE MOVE
+========================================================= */
+
+canvas.addEventListener(
+    "mousemove",
+    event => {
+
+        mouse.sx =
+            event.clientX;
+
+        mouse.sy =
+            event.clientY;
+
+
+        if(
+            dragging
+        ){
+
+            const dx =
+                (
+                    event.clientX -
+                    dragStart.x
+                ) /
+                camera.zoom;
+
+
+            const dy =
+                (
+                    event.clientY -
+                    dragStart.y
+                ) /
+                camera.zoom;
+
+
+            camera.x =
+                camStart.x -
+                dx;
+
+
+            camera.y =
+                camStart.y -
+                dy;
+
+
+            clampCamera();
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   MOUSE DOWN
+========================================================= */
+
+canvas.addEventListener(
+    "mousedown",
+    event => {
+
+        /*
+           Middle = camera.
+        */
+
+        if(
+            event.button === 1
+        ){
+
+            dragging = true;
+
+
+            dragStart = {
+
+                x:event.clientX,
+
+                y:event.clientY
+
+            };
+
+
+            camStart = {
+
+                x:camera.x,
+
+                y:camera.y
+
+            };
+
+
+            event.preventDefault();
+
+            return;
+
+        }
+
+
+        /*
+           Left click.
+        */
+
+        if(
+            event.button === 0
+        ){
+
+            if(
+                selected ===
+                "demolish"
+            ){
+
+                demolishPremade();
+
+            }
+
+            else{
+
+                placeBuilding();
+
+            }
+
+        }
+
+
+        /*
+           Right click.
+        */
+
+        if(
+            event.button === 2
+        ){
+
+            removePlayerBuilding();
+
+        }
+
+    }
+);
+
+
+addEventListener(
+    "mouseup",
+    event => {
+
+        if(
+            event.button === 1
+        ){
+
+            dragging = false;
+
+        }
+
+    }
+);
+
+
+canvas.addEventListener(
+    "contextmenu",
+    event => {
+
+        event.preventDefault();
+
+    }
+);
+
+
+/* =========================================================
+   ZOOM
+========================================================= */
+
+canvas.addEventListener(
+    "wheel",
+    event => {
+
+        event.preventDefault();
+
+
+        const before =
+            screenToWorld(
+                event.clientX,
+                event.clientY
+            );
+
+
+        camera.zoom *=
+            Math.exp(
+                -event.deltaY*.001
+            );
+
+
+        camera.zoom =
+            Math.max(
+                .55,
+                Math.min(
+                    2,
+                    camera.zoom
+                )
+            );
+
+
+        const after =
+            screenToWorld(
+                event.clientX,
+                event.clientY
+            );
+
+
+        camera.x +=
+            before.x -
+            after.x;
+
+
+        camera.y +=
+            before.y -
+            after.y;
+
+
+        clampCamera();
+
+    },
+
+    {
+        passive:false
+    }
+);
+
+
+/* =========================================================
+   KEYBOARD
+========================================================= */
+
+addEventListener(
+    "keydown",
+    event => {
+
+        /*
+           Rotate.
+        */
+
+        if(
+            event.key.toLowerCase()
+            === "r"
+        ){
+
+            rotation =
+                (
+                    rotation+1
+                ) % 4;
+
+        }
+
+
+        /*
+           Early wave.
+        */
+
+        if(
+            event.code ===
+            "Space"
+        ){
+
+            event.preventDefault();
+
+            if(
+                phase === "build"
+            ){
+
+                startWave();
+
+            }
+
+        }
+
+
+        /*
+           Escape returns to wall.
+        */
+
+        if(
+            event.key ===
+            "Escape"
+        ){
+
+            selected =
+                "wall";
+
+            rotation = 0;
+
+            makeShop();
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   START
+========================================================= */
+
+document.getElementById(
+    "startBtn"
+).onclick = () => {
+
+    document.getElementById(
+        "start"
+    ).style.display =
+        "none";
+
+
+    reset();
+
+    running = true;
+
+    lastTime =
+        performance.now();
+
+
+    requestAnimationFrame(
+        loop
+    );
+
+};
+
+
+/* =========================================================
+   RESTART
+========================================================= */
+
+document.getElementById(
+    "restartBtn"
+).onclick = () => {
+
+    document.getElementById(
+        "gameover"
+    ).style.display =
+        "none";
+
+
+    reset();
+
+    running = true;
+
+    lastTime =
+        performance.now();
+
+
+    requestAnimationFrame(
+        loop
+    );
+
+};
+
+
+/* =========================================================
+   GAME LOOP
+========================================================= */
+
+function loop(time){
+
+    if(
+        !running
+    ){
+
+        return;
+
+    }
+
+
+    const dt =
+        Math.min(
+
+            .033,
+
+            (
+                time -
+                lastTime
+            ) / 1000
+
+        );
+
+
+    lastTime =
+        time;
+
+
+    update(dt);
+
+    draw();
+
+
+    requestAnimationFrame(
+        loop
+    );
+
+}
+
+
+/* =========================================================
+   INITIAL
+========================================================= */
+
+setupPremade();
+
+fitCamera();
+
+updateFloorButtons();
+
+updateUI();
+
+draw();
+
+</script>
+
+</body>
+</html>
+```
